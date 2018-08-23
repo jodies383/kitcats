@@ -2,21 +2,24 @@ const express = require('express');
 const exphbs = require('express-handlebars');
 const bodyParser = require('body-parser');
 const session = require('express-session');
-const passport = require('passport');
+const pg = require("pg");
+const Pool = pg.Pool;
 
-var GitHubStrategy = require('passport-github2').Strategy;
+// should we use a SSL connection
+let useSSL = false;
+let local = process.env.LOCAL || false;
+if (process.env.DATABASE_URL && !local){
+    useSSL = true;
+}
+// which db connection to use
+const connectionString = process.env.DATABASE_URL || 'coder:pg123@postgresql://localhost:5432/cat_spotter';
+
+const pool = new Pool({
+    connectionString,
+    ssl : useSSL
+  });
 
 const app = express();
-
-passport.serializeUser(function (user, done) {
-    done(null, user);
-});
-
-passport.deserializeUser(function (obj, done) {
-    done(null, obj);
-});
-
-
 app.use(session({
     secret: 'keyboard cat5 run all 0v3r',
     resave: false,
@@ -34,75 +37,42 @@ app.use(bodyParser.urlencoded({ extended: false }))
 // parse application/json
 app.use(bodyParser.json())
 
-passport.use(new GitHubStrategy({
-    clientID: process.env.GITHUB_CLIENT_ID,
-    clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackURL: "http://localhost:3010/auth/github/callback"
-},
-    function (accessToken, refreshToken, profile, done) {
-        // asynchronous verification, for effect...
-        process.nextTick(function () {
 
-            // To keep the example simple, the user's GitHub profile is returned to
-            // represent the logged-in user.  In a typical application, you would want
-            // to associate the GitHub account with a user record in your database,
-            // and return that user instead.
+app.get('/add', function(req, res) {
+    res.render('add');
+})
 
-            console.log(profile);
-            return done(null, profile);
-        });
+app.post('/add', async function(req, res) {
+    let catName = req.body.cat_name;
+    if (catName && catName !== '') {
+        await pool.query('insert into cats (cat_name, spotted_count) values ($1, $2)' , [catName, 1]);    
     }
-));
 
-app.use(passport.initialize());
-app.use(passport.session());
-
-app.get('/account', ensureAuthenticated, function (req, res) {
-    res.render('account', { user: req.user });
-});
-
-app.get('/login', function (req, res) {
-    res.render('login', { user: req.user });
-});
-
-// GET /auth/github
-//   Use passport.authenticate() as route middleware to authenticate the
-//   request.  The first step in GitHub authentication will involve redirecting
-//   the user to github.com.  After authorization, GitHub will redirect the user
-//   back to this application at /auth/github/callback
-app.get('/auth/github',
-    passport.authenticate('github', { scope: ['user:email'] }),
-    function (req, res) {
-        // The request will be redirected to GitHub for authentication, so this
-        // function will not be called.
-    });
-
-// GET /auth/github/callback
-//   Use passport.authenticate() as route middleware to authenticate the
-//   request.  If authentication fails, the user will be redirected back to the
-//   login page.  Otherwise, the primary route function will be called,
-//   which, in this example, will redirect the user to the home page.
-app.get('/auth/github/callback',
-    passport.authenticate('github', { failureRedirect: '/login' }),
-    function (req, res) {
-        res.redirect('/');
-    });
-
-app.get('/logout', function (req, res) {
-    req.logout();
     res.redirect('/');
 });
 
-app.get('/', function (req, res) {
-    res.render('home', { user: req.user });
+app.post('/spotted/:cat_id', async function(req, res) {
+    let catId = req.params.cat_id;
+
+    // get the current spottedCount from the database
+    let results = await pool.query('select spotted_count from cats where id = $1', [catId]);
+    let cat = results.rows[0];
+    let spottedCount = cat.spotted_count;
+    spottedCount++;
+    
+    // put the updated value back into the db
+    await pool.query('update cats set spotted_count = $1 where id = $2', 
+        [spottedCount, catId]);
+
+    res.redirect('/');
 });
 
-function ensureAuthenticated(req, res, next) {
-    if (req.isAuthenticated()) {
-        return next();
-    }
-    res.redirect('/login')
-}
+app.get('/', async function (req, res) {
+
+    let results = await pool.query('select * from cats order by spotted_count desc');    
+    let cats = results.rows;
+    res.render('home', { cats });
+});
 
 const PORT = process.env.PORT || 3010;
 

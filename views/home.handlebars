@@ -1,11 +1,29 @@
-<h1>Express starter</h1>
+<h1>Cat spotter</h1>
 
- {{#if user}}
-Logged in as: <strong>{{user.username}}</strong>
-<div>   
-    <a href="/logout">Logout</a>
-</div>
-{{else}}
-    <a href="/auth/github">Login</a>
-{{/if}}
+<a href="/add">Add cat spotted</a>
 
+<h2>Cat's spotted</h2>
+
+<table>
+    <tr>
+        <th>Cat name</th>
+        <th>Spotted count</th>
+        <th></th>
+    </tr>
+
+    {{#each cats}}
+        <tr>
+        <td>{{cat_name}}</td>
+        <td>{{spotted_count}}</td>
+        <td>
+            <form action="/spotted/{{id}}" method="post">
+                <input type="hidden" name="cat_id" value="{{id}}">
+                <input type="submit" value="Spotted">
+            </form>
+        </td>
+    </tr>
+    {{/each}}
+
+    
+
+</table>
