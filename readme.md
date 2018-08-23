@@ -1,7 +1,6 @@
 # Cat spotter
 
-A simple ExpressJS app using PostgreSQL.
-
+A simple ExpressJS app using PostgreSQL that add cats that can then the counted when spotted.
 
 Create a database called `cat-spotter`:
 
