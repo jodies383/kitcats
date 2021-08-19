@@ -17,5 +17,13 @@
     "pg": "^7.4.3"
   },
   "devDependencies": {},
-  "description": ""
+  "description": "An ExpressJS app that can add cats to a PostgreSQL database. Once a cat is in the database it keeps a count of when they are spotted.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jodies383/kitcats.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jodies383/kitcats/issues"
+  },
+  "homepage": "https://github.com/jodies383/kitcats#readme"
 }
